@@ -1,0 +1,93 @@
+#!/bin/bash
+set -e
+echo ">>> Script entrypoint.sh lancé"
+FLAG_FILE="/data/db/.mongo-initialized"
+
+# IPs privées fixes des nœuds
+NODE_IPS=("10.0.1.10" "10.0.2.10" "10.0.3.10")
+THIS_NODE_IP=$(ip route get 1 | awk '{print $7}')
+
+echo ">>> IP de ce nœud : $THIS_NODE_IP"
+
+# Si le ReplicaSet n'a pas encore été initialisé
+if [ ! -f "$FLAG_FILE" ]; then
+    # Démarrage initial sans --auth pour init / join
+    echo ">>> Démarrage mongod sans --auth"
+    mongod --replSet rs0 --keyFile /etc/mongo-keyfile/mongo-keyfile --bind_ip_all --fork --logpath /var/log/mongodb.log
+
+    # Attente que mongod soit prêt sur ce nœud
+    echo ">>> Attente du démarrage de MongoDB local..."
+    until mongosh --host "$THIS_NODE_IP" --eval "db.adminCommand('ping')" > /dev/null 2>&1; do
+        echo "⏳ Attente du démarrage de MongoDB local..."
+        sleep 2
+    done
+
+    # Si ce nœud est le premier de la liste, il initie le ReplicaSet
+    if [ "$THIS_NODE_IP" == "${NODE_IPS[0]}" ]; then
+        echo ">>> Ce nœud initie le ReplicaSet rs0"
+        mongosh --host "$THIS_NODE_IP" <<EOF
+rs.initiate({
+    _id: "rs0",
+    members: [
+        { _id: 0, host: "${NODE_IPS[0]}:27017" },
+        { _id: 1, host: "${NODE_IPS[1]}:27017" },
+        { _id: 2, host: "${NODE_IPS[2]}:27017" }
+    ]
+})
+EOF
+
+        # Attente que le PRIMARY soit élu
+        echo ">>> Attente de l'élection du PRIMARY..."
+        maxTries=60
+        i=0
+        while [ $i -lt $maxTries ]; do
+            PRIMARY=$(mongosh --quiet --host "$THIS_NODE_IP" --eval "rs.isMaster().ismaster")
+            if [ "$PRIMARY" == "true" ]; then
+                echo "✅ PRIMARY élu sur ce nœud"
+                break
+            fi
+            echo "⏳ En attente du PRIMARY..."
+            sleep 1
+            i=$((i+1))
+        done
+        if [ $i -eq $maxTries ]; then
+            echo "⚠️ Timeout : PRIMARY non élu après 60 secondes"
+            exit 1
+        fi
+
+        # Création de l’utilisateur admin
+        mongosh --host "$THIS_NODE_IP" <<EOF
+use admin
+db.createUser({
+    user: "root",
+    pwd: "root",
+    roles: [ { role: "root", db: "admin" } ]
+})
+EOF
+        echo ">>> Initialisation terminée sur ce nœud"
+    else
+        # Les autres nœuds rejoignent le ReplicaSet existant
+        echo ">>> Ce nœud rejoint le ReplicaSet rs0"
+        for host in "${NODE_IPS[@]}"; do
+            if [ "$host" != "$THIS_NODE_IP" ]; then
+                echo "⏳ Attente de $host..."
+                until mongosh --host "$host" --eval "db.adminCommand('ping')" > /dev/null 2>&1; do
+                    echo "⏳ $host pas encore prêt..."
+                    sleep 2
+                done
+                echo "✅ $host prêt"
+            fi
+        done
+    fi
+
+    # Marquer comme initialisé
+    touch "$FLAG_FILE"
+
+    # Redémarrage mongod avec auth
+    echo ">>> Arrêt mongod initial pour relancer avec --auth"
+    mongod --shutdown
+fi
+
+# Démarrage final avec --auth
+echo ">>> Démarrage mongod avec --auth"
+exec mongod --replSet rs0 --keyFile /etc/mongo-keyfile/mongo-keyfile --bind_ip_all --auth

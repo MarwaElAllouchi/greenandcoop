@@ -1,0 +1,6 @@
+.env
+mongo-keyfile
+*.log
+.history/
+__pycache__/
+venv/

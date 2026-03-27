@@ -1,0 +1,12 @@
+FROM mongo:6
+
+COPY mongo-keyfile /etc/mongo-keyfile/mongo-keyfile
+RUN chown mongodb:mongodb /etc/mongo-keyfile/mongo-keyfile \
+ && chmod 400 /etc/mongo-keyfile/mongo-keyfile
+ 
+RUN apt-get update && apt-get install -y iproute2
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+
+ENTRYPOINT ["/entrypoint.sh"]

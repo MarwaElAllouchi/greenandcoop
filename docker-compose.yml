@@ -1,0 +1,65 @@
+
+services:
+  mongo1:
+    build:
+      context: .
+      dockerfile: Dockerfile.db
+    image: mongo-secure:latest
+    container_name: mongo1
+    hostname: mongo1
+    ports:
+      - "${MONGO1_PORT}:27017"
+    #command: ["--replSet", "rs0", "--keyFile", "/etc/mongo-keyfile/mongo-keyfile", "--bind_ip_all", "--auth"]
+    volumes:
+      #- ./mongo-keyfile:/etc/mongo-keyfile/mongo-keyfile:ro
+      - mongo1_data:/data/db
+    networks:
+      - meteo_network
+
+  mongo2:
+    image: mongo-secure:latest
+    container_name: mongo2
+    hostname: mongo2
+    ports:
+      - "${MONGO2_PORT}:27017"
+    #command: ["--replSet", "rs0", "--keyFile", "/etc/mongo-keyfile/mongo-keyfile", "--bind_ip_all", "--auth"]
+    volumes:
+      - mongo2_data:/data/db
+    networks:
+      - meteo_network
+
+  mongo3:
+    image: mongo-secure:latest
+    container_name: mongo3
+    hostname: mongo3
+    ports:
+      - "${MONGO3_PORT}:27017"
+    #docker exec -it mongo1 mongosh "mongodb://root:root@mongo1:27017,mongo2:27017,mongo3:27017/?replicaSet=rs0"command: ["--replSet", "rs0", "--keyFile", "/etc/mongo-keyfile/mongo-keyfile", "--bind_ip_all", "--auth"]
+    volumes:
+      - mongo3_data:/data/db
+    networks:
+      - meteo_network
+
+
+  pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    container_name: data_pipeline
+    env_file:
+      - .env
+    command: ["python", "main.py"]
+    depends_on:
+      - mongo1
+      - mongo2
+      - mongo3
+    networks:
+      - meteo_network
+
+volumes:
+  mongo1_data:
+  mongo2_data:
+  mongo3_data:
+
+networks:
+  meteo_network:
