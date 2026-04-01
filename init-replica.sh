@@ -1,5 +1,5 @@
 #!/bin/bash
-
+#local
 echo "⏳ Attente du démarrage de MongoDB..."
 sleep 15
 
