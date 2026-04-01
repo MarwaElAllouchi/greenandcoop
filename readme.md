@@ -1,4 +1,5 @@
 🌱 Green & Coop – Data Engineering Pipeline (Météo)
+
 📌 Contexte
 
 Ce projet a été réalisé dans le cadre d’un cas d’usage data engineering pour une coopérative agricole (Green & Coop).
@@ -13,6 +14,7 @@ Nettoyer et préparer les données jusqu’à la couche curated
 Stocker les données dans une base distribuée MongoDB
 Assurer la haute disponibilité et la réplication
 Mettre en place un monitoring complet (pipeline + base de données)
+
 🏗️ Architecture Globale
 ![alt text](image.png)
 Architecture distribuée cloud-native basée sur AWS :
@@ -24,6 +26,7 @@ AWS ECS Fargate : exécution du pipeline Python
 MongoDB Replica Set (EC2) : stockage distribué
 Amazon S3 : stockage des logs et données intermédiaires
 Amazon CloudWatch : monitoring et métriques
+
 🔄 Flux global
 
 API météo
@@ -36,6 +39,7 @@ API météo
 → Logs & métriques (S3 + CloudWatch)
 
 ⚙️ Stack Technique
+
 Python (pandas, requests)
 MongoDB (Replica Set)
 Docker / Docker Compose
@@ -43,9 +47,12 @@ AWS (ECS Fargate, EC2, S3, CloudWatch, EventBridge)
 Airbyte
 Git / GitHub
 ☁️ Infrastructure Cloud
+
 🔹 Cluster MongoDB
 3 instances EC2
 3 conteneurs MongoDB
+🔹 Cluster pipeline
+  ECS fargate
 Déploiement via Docker
 🔹 Replica Set MongoDB
 1 PRIMARY
@@ -60,6 +67,7 @@ En cas de panne → élection automatique d’un nouveau PRIMARY
 haute disponibilité
 tolérance aux pannes
 continuité de service
+
 🐳 Conteneurisation
 
 Le projet repose sur deux images Docker personnalisées :
@@ -88,7 +96,9 @@ Gestion des race conditions
 Initialisation automatique fiable
 Déploiement reproductible
 Sécurité renforcée (auth + keyFile)
+
 🔄 Pipeline de Données
+
 1. Ingestion
 Données météo ingérées via Airbyte
 Planification CRON (10 à 30 minutes)
@@ -189,4 +199,5 @@ Dashboard BI (Power BI / QuickSight)
 👩‍💻 Auteur
 
 Projet réalisé par Marwa El Allouchi
+
 Data Engineer (OpenClassrooms)
