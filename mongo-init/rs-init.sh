@@ -1,4 +1,4 @@
-
+#replicaset local
 # Attendre que MongoDB soit prêt
 echo "⏳ Attente que MongoDB soit prêt..."
 until mongosh -u root -p root --authenticationDatabase admin --eval "db.adminCommand('ping')" >/dev/null 2>&1; do
